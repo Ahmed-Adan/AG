@@ -3,13 +3,20 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 
 import { NAV_ITEMS } from "@/components/layout/nav-items";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api-client";
 import type { Role } from "@/lib/permissions";
 
 export function Sidebar({ role, className }: { role: Role; className?: string }) {
   const pathname = usePathname();
+  const { data } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => apiFetch<{ settings: { logoUrl: string | null } }>("/api/settings"),
+    staleTime: 5 * 60 * 1000,
+  });
 
   return (
     <aside
@@ -20,11 +27,11 @@ export function Sidebar({ role, className }: { role: Role; className?: string })
     >
       <Link href="/dashboard" className="mb-4 flex items-center gap-3 px-2">
         <Image
-          src="/logo.jpg"
+          src={data?.settings.logoUrl || "/logo.jpg"}
           alt="Alhatimi Glass and Glazing"
           width={40}
           height={40}
-          className="rounded-full"
+          className="rounded-full object-cover"
         />
         <div className="leading-tight">
           <p className="text-sm font-bold text-primary dark:text-white">Alhatimi</p>

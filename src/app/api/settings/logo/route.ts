@@ -1,6 +1,7 @@
 import path from "node:path";
 import fs from "node:fs/promises";
 import { NextRequest, NextResponse } from "next/server";
+import { put } from "@vercel/blob";
 
 import { prisma } from "@/lib/prisma";
 import { requireSession, handleApiError } from "@/lib/api";
@@ -8,6 +9,28 @@ import { requirePermission, PermissionError } from "@/lib/permissions";
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
 const MAX_SIZE = 5 * 1024 * 1024;
+
+/**
+ * Serverless hosts (Vercel) have an ephemeral/read-only filesystem, so a local
+ * fs.writeFile would not persist across invocations. When BLOB_READ_WRITE_TOKEN
+ * is configured (i.e. a Vercel Blob store is attached to the project), upload
+ * there instead; otherwise fall back to public/uploads for local development.
+ */
+async function saveLogo(file: File, fileName: string): Promise<string> {
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const blob = await put(`logos/${fileName}`, file, {
+      access: "public",
+      addRandomSuffix: false,
+    });
+    return blob.url;
+  }
+
+  const uploadsDir = path.join(process.cwd(), "public", "uploads");
+  await fs.mkdir(uploadsDir, { recursive: true });
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await fs.writeFile(path.join(uploadsDir, fileName), buffer);
+  return `/uploads/${fileName}`;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,13 +52,8 @@ export async function POST(request: NextRequest) {
 
     const extension = path.extname(file.name) || ".png";
     const fileName = `logo-${Date.now()}${extension}`;
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await fs.mkdir(uploadsDir, { recursive: true });
+    const logoUrl = await saveLogo(file, fileName);
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(path.join(uploadsDir, fileName), buffer);
-
-    const logoUrl = `/uploads/${fileName}`;
     await prisma.companySettings.upsert({
       where: { id: "singleton" },
       update: { logoUrl },

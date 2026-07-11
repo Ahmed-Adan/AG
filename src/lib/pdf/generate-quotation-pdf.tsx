@@ -8,6 +8,9 @@ import { QuotationDocument, type QuotationPdfData } from "@/components/pdf/quota
 
 function resolveLogoPath(logoUrl: string | null): string | null {
   if (!logoUrl) return null;
+  // Remote URLs (e.g. Vercel Blob) are passed straight through — react-pdf fetches them directly.
+  if (/^https?:\/\//.test(logoUrl)) return logoUrl;
+
   const relative = logoUrl.startsWith("/") ? logoUrl.slice(1) : logoUrl;
   const absolute = path.join(process.cwd(), "public", relative);
   return fs.existsSync(absolute) ? absolute : null;
