@@ -10,6 +10,7 @@
     "test": "vitest run",
     "smoke": "tsx scripts/smoke.ts",
     "db:seed": "prisma db seed",
+    "db:seed:prod": "tsx scripts/seed-production.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

@@ -59,7 +59,37 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run lint`      | ESLint (flat config)                                       |
 | `npm test`          | Unit tests (Vitest) — calculations, permissions, numbering |
 | `npm run smoke`     | API smoke test against a running dev server                |
-| `npm run db:seed`   | Re-run the Prisma seed script                               |
+| `npm run db:seed`   | Re-run the Prisma seed script (demo accounts + sample data) |
+| `npm run db:seed:prod` | Seed production: company settings + exactly one Admin account you name (see below) |
+
+## Deploying to Vercel
+
+1. Import the repo into Vercel and set these Environment Variables:
+   - `DATABASE_URL` — your production Postgres connection string (use the pooled
+     connection string if your provider offers one, e.g. Neon/Supabase).
+   - `AUTH_SECRET` — a strong random secret (`openssl rand -base64 32`). Do not
+     reuse the local dev value.
+   - `NEXTAUTH_URL` — your production URL, e.g. `https://your-app.vercel.app`.
+2. In the project's **Storage** tab, create and connect a **Blob** store. This
+   auto-injects `BLOB_READ_WRITE_TOKEN`, which the Settings → logo upload route
+   uses instead of writing to the filesystem (serverless hosts don't have a
+   persistent filesystem).
+3. Apply migrations to the production database once, from your machine:
+   ```bash
+   DATABASE_URL="<production connection string>" npx prisma migrate deploy
+   ```
+4. Seed the production database with a real Admin account (do **not** use
+   `npm run db:seed` in production — it creates demo accounts with published
+   default passwords):
+   ```bash
+   DATABASE_URL="<production connection string>" \
+   ADMIN_NAME="Your Name" \
+   ADMIN_EMAIL="you@alhatimiglass.com" \
+   ADMIN_PASSWORD="a-strong-password" \
+   npm run db:seed:prod
+   ```
+5. Deploy. `postinstall` runs `prisma generate` automatically as part of the
+   Vercel build.
 
 ## Architecture notes
 
